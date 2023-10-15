@@ -24,6 +24,7 @@ cwd = os.getcwd()
 # Csv paths
 raw_tickers_path = f"{cwd}\\YahooFinance\\RawTickers" # This folder will hold csv files, with just the tickers and no further information. 
 shorted_data_path = f"{cwd}\\YahooFinance\\ShortData"
+historical_stock_prices_folder = f"{cwd}\\YahooFinance\\HistoricalStockPrices"
 
 
 
@@ -33,6 +34,7 @@ class ShortScraper(ScraperTemplate):
         self.yahoo_finance_url = "https://finance.yahoo.com/screener/predefined/most_shorted_stocks/?count=100&offset={}"
         self.browser = None    
         self.current_date = dt.datetime.now().date()
+        self.date_info = dt.date.today()
         super().__init__() 
 
     '''----------------------------------- MarketWatch  -----------------------------------'''
@@ -295,6 +297,58 @@ class ShortScraper(ScraperTemplate):
 
 
 
+    '''----------------------------------- Historical Stock Prices Utilities -----------------------------------'''
+    def get_stock_historical_stock_prices(self, ticker: str):
+        """
+        :param ticker: A string of the ticker to retrieve the data for.
+
+        Description: This function will attempt to get the most recent stock price data locally from a csv file. 
+                     If a file does not exist for the current date, it will be fetched from Yahoo Finance and a csv file will be created with the data.
+        """
+        # Since new stock data is not added on weekends, this logic will determine if the script is being run on a weekend. 
+        # It will default the date to the most recent trading day, which should be the most recent Friday. 
+        if self.is_weekend():
+            # Get the date of the most recent friday.
+            most_recent_trading_day = self.get_most_recent_friday()
+        else: # If it is not the weekend use the current trading day. 
+            most_recent_trading_day = self.current_date
+        # Capitalize ticker to minimize case matching errors.
+        ticker = ticker.upper()
+
+        # Boolean to track if new data needs to be collected
+        scraping_needed = False
+        ticker_path = f"{historical_stock_prices_folder}\\{ticker}.csv" 
+
+        try:
+            df = pd.read_csv(ticker_path)
+            most_recent_date_recorded = pd.to_datetime(df["Date"]).max()
+
+            print(f"MRD: {most_recent_date_recorded.date()}    MRTD: {most_recent_trading_day}")
+
+            # If the most recent date recorded does not equal the most recent trading day. 
+            if most_recent_date_recorded.date() != most_recent_trading_day:
+                print("TAG1")
+                new_df = yf.download(ticker, period="Max")
+                new_df = new_df.iloc[::-1]
+                # Merge the two dataframes.
+                merged_data = pd.concat([df, new_df], ignore_index=True)
+                # Write the merged data to the csv. 
+                merged_data.to_csv(ticker_path)
+                return merged_data
+            else:
+                print("TAG2")
+                return df            
+        # If the csv file does not exist. 
+        except FileNotFoundError:
+            print("TAG3")
+            df = yf.download(ticker, period="max")
+            # Reverse the dataframes to put the newest entries on top. 
+            df = df.iloc[::-1]
+            df.to_csv(ticker_path) # Write the data to the csv file in the path.
+            return df
+            
+
+
 
     '''----------------------------------- CSV Utilities -----------------------------------'''
     '''-------------------------------'''
@@ -330,5 +384,18 @@ class ShortScraper(ScraperTemplate):
         return data
 
     '''-----------------------------------'''
+    '''----------------------------------- Date Utilities -----------------------------------'''
     '''-----------------------------------'''
+    def is_weekend(self) -> bool:
+        weekday = self.date_info.weekday()
+        return weekday == 5 or weekday == 6 # Returns a boolean if the weekday is Saturday(5), or Sunday(6)
     '''-----------------------------------'''
+    def get_most_recent_friday(self):
+        date = self.date_info
+        weekday = self.date_info.weekday()
+        if weekday == 5: # Saturday
+            days_to_subtract = 1
+        elif weekday == 6: # Sunday
+            days_to_subtract = 2
+        date -= dt.timedelta(days=days_to_subtract)
+        return date
