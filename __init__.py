@@ -9,6 +9,8 @@ import datetime as dt
 
 from Scrapers.short_scraper import ShortScraper
 
+# Import the TA Library
+from TechnicalAnalysis.ta import TechnicalAnalysis
 
 
 '''-----------------------------------'''
@@ -22,13 +24,14 @@ if __name__ == "__main__":
     
     marketwatch_csv_path = f"{cwd}\\Marketwatch\\mw_{formatted_date}.csv"
     #short_scraper.get_short_data_yahoo_finance()
-    tickers_list = short_scraper.get_short_tickers_yahoo_finance(1000)
+    #tickers_list = short_scraper.get_short_tickers_yahoo_finance(1000)
     
     index = 1
-    for t in tickers_list:
-        print(f"{index}: {t}")
-        short_scraper.get_stock_historical_stock_prices(t)
-        index += 1
+    
+    ta = TechnicalAnalysis("MRNA")
+    ta.basic_formatting()
+    
+    #df = short_scraper.get_stock_historical_stock_prices("AAL")
     #print(f"Tickerlist: {tickers_list}  Length: {len(tickers_list)}")
     #short_scraper.get_short_data_yahoo_finance(tickers_list)
     #mw_df = short_scraper.get_short_data_marketwatch()

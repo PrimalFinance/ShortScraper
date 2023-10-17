@@ -320,8 +320,11 @@ class ShortScraper(ScraperTemplate):
         ticker_path = f"{historical_stock_prices_folder}\\{ticker}.csv" 
 
         try:
+            print(f"Ticker path: {ticker_path}")
             df = pd.read_csv(ticker_path)
             most_recent_date_recorded = pd.to_datetime(df["Date"]).max()
+
+            print(f"DF: {df}")
 
             print(f"MRD: {most_recent_date_recorded.date()}    MRTD: {most_recent_trading_day}")
 
@@ -329,12 +332,11 @@ class ShortScraper(ScraperTemplate):
             if most_recent_date_recorded.date() != most_recent_trading_day:
                 print("TAG1")
                 new_df = yf.download(ticker, period="Max")
+                # Reverse dataframe so new entries are on top.
                 new_df = new_df.iloc[::-1]
-                # Merge the two dataframes.
-                merged_data = pd.concat([df, new_df], ignore_index=True)
                 # Write the merged data to the csv. 
-                merged_data.to_csv(ticker_path)
-                return merged_data
+                new_df.to_csv(ticker_path,index=True)
+                return new_df
             else:
                 print("TAG2")
                 return df            
