@@ -38,10 +38,14 @@ def pick_shorts(strategy: int, number_of_tickers: int = 100):
 
     ticker_list = ticker_list[:number_of_tickers]
 
-    asset_data_list = [AssetData(i, display_info=False).apply_rsi().apply_macd().apply_uptrend() for i in ticker_list]
+    asset_data_list = [AssetData(i, display_info=False).apply_rsi().apply_macd().apply_uptrend().apply_downtrend() for i in ticker_list]
     short_picker = ShortPicker()
     short_picker.set_short_list(asset_data_list)
     if strategy == 1:
+        # Set the rsi settings 
+        short_picker.rsi_overbought = 60
+        # Set the short settings 
+        short_picker.max_short_interest = 30
         short_picker.strategy_recently_overbought()
 
 
@@ -97,7 +101,7 @@ if __name__ == "__main__":
 
     start = time.time()
 
-    pick_shorts(strategy=1)
+    pick_shorts(strategy=1, number_of_tickers=1000)
 
     end = time.time()
 

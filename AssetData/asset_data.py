@@ -41,6 +41,21 @@ class AssetData:
         self.recent_uptrend_length = None
         self.recent_downtrend_length = None
 
+        # Recent rsi settings and trend lengths
+        self.rsi_overbought = 70
+        self.rsi_oversold = 30 
+        self.recent_rsi_overbought_length = None
+        self.recent_rsi_oversold_length = None
+
+        # Dictionary to hold returns data. 
+        self.returns = {
+            "30day": np.nan,
+            "60day": np.nan,
+            "90day": np.nan,
+            "180day": np.nan,
+            "365day": np.nan
+        }
+
 
         # Short scraper 
         self.short_scraper = Scrapers.short_scraper.ShortScraper(display_info=display_info)
@@ -146,6 +161,34 @@ class AssetData:
         if self.returns_col_label not in self.price_data.columns:
             self.price_data[self.returns_col_label] = self.price_data["Close"].pct_change(-1) * 100# Make the pct change be calculated in ascending order
 
+            # Get the most recent close price. 
+            current_close = self.price_data["Close"].iloc[0]
+            # Get the close 30, 60, and 90 days ago. 
+            try:
+                close_30_before = self.price_data["Close"].iloc[30]
+                self.returns["30day"] = ((current_close - close_30_before)/abs(close_30_before)) * 100
+            except IndexError:
+                pass
+            try:
+                close_60_before = self.price_data["Close"].iloc[60]
+                self.returns["60day"] = ((current_close - close_60_before)/abs(close_60_before)) * 100
+            except IndexError:
+                pass
+            try:
+                close_90_before = self.price_data["Close"].iloc[90]
+                self.returns["90day"] = ((current_close - close_90_before)/abs(close_90_before)) * 100
+            except IndexError:
+                pass
+            try:
+                close_180_before = self.price_data["Close"].iloc[180]
+                self.returns["180day"] = ((current_close - close_180_before)/abs(close_180_before)) * 100 
+            except IndexError:
+                pass
+            try:
+                close_365_before = self.price_data["Close"].iloc[365]
+                self.returns["365day"] = ((current_close - close_365_before)/abs(close_365_before)) * 100
+            except IndexError:
+                pass
         return self
     '''-----------------------------------'''
     '''-----------------------------------'''
@@ -163,13 +206,52 @@ class AssetData:
 
             # If the data is in a descending order, reverse it to ascending temporarily. 
             if self.is_descending():
-                temp_df = self.price_data[::-1] # Reverse the dataframe to now be in ascending order. (Largest on bottom). 
+                temp_df = self.price_data[::-1] # Reverse the dataframe to now be in ascending order. (Largest on bottom).
                 rsi = pta.rsi(temp_df["Close"], length=rsi_period)
-                self.price_data["RSI"] = rsi[::-1] # Reverse dataframe to its original state, descending order (Largest at top). 
+                try:
+                    self.price_data["RSI"] = rsi[::-1] # Reverse dataframe to its original state, descending order (Largest at top). 
+                except TypeError: 
+                    self.price_data["RSI"] = np.nan
             else:
                 temp_df = self.price_data
                 rsi = pta.rsi(temp_df["Close"], length=rsi_period)
                 self.price_data["RSI"] = rsi
+
+            # RSI Trend lengths logic. 
+            overbought_index = 0
+            oversold_index = 0
+            overbought_length = 0
+            oversold_length = 0
+
+            while overbought_index < len(self.price_data) and oversold_index < len(self.price_data):
+                if self.price_data["RSI"].iloc[overbought_index] >= self.rsi_overbought:
+                    overbought_length += 1
+                    overbought_index += 1
+                else:
+                    break
+
+                if self.price_data["RSI"].iloc[oversold_index] <= self.rsi_oversold:
+                    oversold_length += 1
+                    overbought_length += 1
+                else: 
+                    break
+            """            # Over bought logic. 
+            while overbought_index < len(self.price_data):
+                if self.price_data["RSI"].iloc[overbought_index] >= self.rsi_overbought:
+                    overbought_length += 1
+                else: 
+                    break
+                overbought_index += 1
+            
+            # Over sold logic. 
+            while oversold_index < len(self.price_data):
+                if self.price_data["RSI"] <= self.rsi_oversold:
+                    oversold_length += 1
+                else:
+                    break"""
+
+
+
             
         return self
     '''-----------------------------------'''
